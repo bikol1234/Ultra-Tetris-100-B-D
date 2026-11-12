@@ -1,0 +1,1979 @@
+<!DOCTYPE html>
+<html lang="de" class="dark h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>B&D Ultra Tetris</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- Google Fonts: Orbitron & Inter -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet" />
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            display: ['Orbitron', 'sans-serif']
+          },
+          colors: {
+            neonBlue: '#00f0ff',
+            neonPink: '#ff007f',
+            neonPurple: '#7000ff',
+            neonGreen: '#00ff66',
+            neonGold: '#ffd700',
+            darkBg: '#090a16',
+            cardBg: 'rgba(18, 20, 38, 0.85)'
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom Scrollbar & Animations */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(10, 10, 25, 0.5); }
+    ::-webkit-scrollbar-thumb { background: #7000ff; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #00f0ff; }
+
+    .font-display { font-family: 'Orbitron', sans-serif; }
+
+    /* Dynamic Background Themes */
+    .bg-theme-space {
+      background: radial-gradient(circle at center, #1b1c3a 0%, #080914 100%);
+    }
+    .bg-theme-aurora {
+      background: linear-gradient(135deg, #051923 0%, #003554 40%, #006466 70%, #4d194d 100%);
+      background-size: 200% 200%;
+      animation: auroraShift 12s ease infinite;
+    }
+    .bg-theme-cyber {
+      background: linear-gradient(135deg, #180029 0%, #00122e 50%, #2e001b 100%);
+    }
+    .bg-theme-synthwave {
+      background: linear-gradient(180deg, #1a002c 0%, #3d0043 50%, #12001f 100%);
+    }
+    .bg-theme-underwater {
+      background: linear-gradient(180deg, #00101d 0%, #002b49 60%, #004970 100%);
+    }
+    .bg-theme-volcano {
+      background: linear-gradient(180deg, #2b0404 0%, #4d0d0d 60%, #170000 100%);
+    }
+    .bg-theme-gold {
+      background: linear-gradient(135deg, #291d03 0%, #4a3809 50%, #171000 100%);
+    }
+
+    @keyframes auroraShift {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .glass-panel {
+      background: rgba(15, 18, 38, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .glass-panel-glow {
+      background: rgba(20, 24, 50, 0.85);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      box-shadow: 0 0 25px rgba(0, 240, 255, 0.15);
+    }
+
+    .shake {
+      animation: shakeAnim 0.18s ease-in-out;
+    }
+    @keyframes shakeAnim {
+      0% { transform: translate(0, 0); }
+      20% { transform: translate(-4px, 4px); }
+      40% { transform: translate(4px, -4px); }
+      60% { transform: translate(-3px, -2px); }
+      80% { transform: translate(3px, 2px); }
+      100% { transform: translate(0, 0); }
+    }
+
+    .touch-btn {
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+    .touch-btn:active {
+      transform: scale(0.92);
+      filter: brightness(1.2);
+    }
+  </style>
+</head>
+<body class="bg-darkBg text-white h-full font-sans antialiased select-none overflow-x-hidden flex flex-col justify-between" id="appBody">
+
+  <!-- TOP HEADER / NAVBAR -->
+  <header class="w-full glass-panel border-b border-white/10 px-4 py-3 sticky top-0 z-40 flex items-center justify-between shadow-lg">
+    <div class="flex items-center space-x-3 cursor-pointer" onclick="switchTab('game')">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-indigo-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-cyan-500/30">
+        <i class="fa-solid font-display text-xl text-white">T</i>
+      </div>
+      <div>
+        <h1 class="font-display font-black text-lg md:text-xl tracking-wider bg-gradient-to-r from-cyan-400 via-fuchsia-400 to-amber-300 bg-clip-text text-transparent">
+          B&D ULTRA TETRIS
+        </h1>
+        <div class="flex items-center text-xs space-x-2 text-gray-400">
+          <span id="llConnectionBadge" class="flex items-center space-x-1 text-emerald-400">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" id="llBadgeDot"></span>
+            <span id="llBadgeText">LootLocker Live</span>
+          </span>
+          <span>•</span>
+          <button onclick="promptChangeName()" class="hover:text-cyan-300 transition flex items-center space-x-1" title="Name ändern">
+            <span id="playerDisplayName">Spieler</span>
+            <i class="fa-solid fa-pen text-[10px] text-gray-500"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Currency & Quick Actions -->
+    <div class="flex items-center space-x-3">
+      <!-- Coins Pill -->
+      <div class="flex items-center space-x-2 bg-amber-500/10 border border-amber-500/30 px-3 py-1.5 rounded-full text-amber-300 font-display font-semibold text-sm shadow-inner">
+        <i class="fa-solid fa-coins text-amber-400 text-base"></i>
+        <span id="coinBalanceDisplay">0</span>
+      </div>
+
+      <!-- Settings / Audio Toggle -->
+      <button onclick="toggleAudio()" id="audioBtn" class="w-9 h-9 rounded-lg glass-panel hover:bg-white/10 flex items-center justify-center text-cyan-400 transition">
+        <i class="fa-solid fa-volume-high text-base"></i>
+      </button>
+
+      <!-- Player Profile Button -->
+      <button onclick="openOwnProfile()" class="w-9 h-9 rounded-lg bg-indigo-600/50 hover:bg-indigo-500 border border-indigo-400/30 flex items-center justify-center text-white transition shadow">
+        <i class="fa-solid fa-user-astronaut text-base"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- NAVIGATION TABS -->
+  <nav class="w-full glass-panel border-b border-white/5 px-2 py-2 z-30 flex items-center justify-around md:justify-center md:space-x-4 text-xs md:text-sm font-display">
+    <button onclick="switchTab('game')" id="tab-btn-game" class="nav-tab-btn active px-4 py-2 rounded-xl flex items-center space-x-2 bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+      <i class="fa-solid fa-gamepad"></i>
+      <span>Spiel</span>
+    </button>
+
+    <button onclick="switchTab('levels')" id="tab-btn-levels" class="nav-tab-btn px-4 py-2 rounded-xl flex items-center space-x-2 text-gray-400 hover:text-white hover:bg-white/5 transition">
+      <i class="fa-solid fa-map-location-dot"></i>
+      <span>100 Level</span>
+    </button>
+
+    <button onclick="switchTab('wheel')" id="tab-btn-wheel" class="nav-tab-btn px-4 py-2 rounded-xl flex items-center space-x-2 text-gray-400 hover:text-white hover:bg-white/5 transition relative">
+      <i class="fa-solid fa-dharmachakra text-amber-400"></i>
+      <span>Glücksrad</span>
+    </button>
+
+    <button onclick="switchTab('shop')" id="tab-btn-shop" class="nav-tab-btn px-4 py-2 rounded-xl flex items-center space-x-2 text-gray-400 hover:text-white hover:bg-white/5 transition">
+      <i class="fa-solid fa-store"></i>
+      <span>Shop</span>
+    </button>
+
+    <button onclick="switchTab('leaderboard')" id="tab-btn-leaderboard" class="nav-tab-btn px-4 py-2 rounded-xl flex items-center space-x-2 text-gray-400 hover:text-white hover:bg-white/5 transition">
+      <i class="fa-solid fa-trophy text-amber-400"></i>
+      <span>Rangliste (Echt)</span>
+    </button>
+
+    <button onclick="switchTab('quests')" id="tab-btn-quests" class="nav-tab-btn px-4 py-2 rounded-xl flex items-center space-x-2 text-gray-400 hover:text-white hover:bg-white/5 transition">
+      <i class="fa-solid fa-scroll text-purple-400"></i>
+      <span class="hidden sm:inline">Quests</span>
+    </button>
+  </nav>
+
+  <!-- MAIN CONTENT CONTAINER -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-2 md:p-4 relative flex flex-col justify-center">
+
+    <!-- ==================== TAB 1: GAME VIEW ==================== -->
+    <div id="tab-game" class="tab-content w-full flex flex-col lg:flex-row items-center lg:items-start justify-center gap-4">
+
+      <!-- LEFT SIDEBAR: HOLD & POWERUPS -->
+      <div class="w-full lg:w-48 flex lg:flex-col items-center justify-between gap-3">
+        <!-- Hold Box -->
+        <div class="glass-panel p-3 rounded-2xl w-1/2 lg:w-full flex flex-col items-center shadow-lg">
+          <span class="text-xs font-display text-gray-400 uppercase tracking-widest mb-1">Speichern (Hold)</span>
+          <canvas id="holdCanvas" width="100" height="100" class="bg-black/40 rounded-xl border border-white/10"></canvas>
+          <span class="text-[10px] text-gray-500 mt-1">Taste [C] / [Shift]</span>
+        </div>
+
+        <!-- In-Game Power-Ups Panel -->
+        <div class="glass-panel p-3 rounded-2xl w-1/2 lg:w-full flex flex-col items-center shadow-lg">
+          <span class="text-xs font-display text-amber-400 uppercase tracking-widest mb-2 flex items-center gap-1">
+            <i class="fa-solid fa-bolt"></i> Power-Ups
+          </span>
+          <div class="grid grid-cols-3 lg:grid-cols-1 gap-2 w-full">
+            <button onclick="usePowerUp('bomb')" id="pwBtnBomb" class="glass-panel p-2 rounded-xl hover:border-amber-400 transition flex items-center justify-between text-xs">
+              <span class="flex items-center space-x-1.5">
+                <i class="fa-solid fa-bomb text-red-400 text-sm"></i>
+                <span class="hidden md:inline font-semibold">Bombe</span>
+              </span>
+              <span id="pwCountBomb" class="bg-red-500/30 text-red-300 px-1.5 py-0.5 rounded text-[10px] font-bold">x1</span>
+            </button>
+            <button onclick="usePowerUp('slow')" id="pwBtnSlow" class="glass-panel p-2 rounded-xl hover:border-cyan-400 transition flex items-center justify-between text-xs">
+              <span class="flex items-center space-x-1.5">
+                <i class="fa-solid fa-hourglass-half text-cyan-400 text-sm"></i>
+                <span class="hidden md:inline font-semibold">Zeitlupe</span>
+              </span>
+              <span id="pwCountSlow" class="bg-cyan-500/30 text-cyan-300 px-1.5 py-0.5 rounded text-[10px] font-bold">x1</span>
+            </button>
+            <button onclick="usePowerUp('laser')" id="pwBtnLaser" class="glass-panel p-2 rounded-xl hover:border-purple-400 transition flex items-center justify-between text-xs">
+              <span class="flex items-center space-x-1.5">
+                <i class="fa-solid fa-wand-magic-sparkles text-purple-400 text-sm"></i>
+                <span class="hidden md:inline font-semibold">Laser</span>
+              </span>
+              <span id="pwCountLaser" class="bg-purple-500/30 text-purple-300 px-1.5 py-0.5 rounded text-[10px] font-bold">x1</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- CENTER: TETRIS CANVAS BOARD -->
+      <div class="relative flex flex-col items-center">
+        <div class="w-full flex items-center justify-between px-4 py-2 glass-panel rounded-t-2xl border-b-0 text-sm font-display">
+          <div>
+            <span class="text-gray-400 text-xs block">LEVEL</span>
+            <span id="currentLevelDisplay" class="text-cyan-400 text-xl font-bold">1</span>
+          </div>
+          <div class="text-center">
+            <span class="text-gray-400 text-xs block">PUNKTE</span>
+            <span id="currentScoreDisplay" class="text-emerald-400 text-xl font-bold">0</span>
+          </div>
+          <div class="text-right">
+            <span class="text-gray-400 text-xs block">REIHEN</span>
+            <span id="currentLinesDisplay" class="text-amber-400 text-xl font-bold">0</span>
+          </div>
+        </div>
+
+        <div class="w-full bg-gray-900/80 h-2.5 overflow-hidden border-x border-white/10 relative">
+          <div id="levelProgressBar" class="bg-gradient-to-r from-cyan-500 via-indigo-500 to-fuchsia-500 h-full w-0 transition-all duration-300"></div>
+          <span id="levelProgressText" class="absolute inset-0 flex items-center justify-center text-[9px] font-display font-bold text-white drop-shadow">0 / 1000 Pkt</span>
+        </div>
+
+        <div class="relative glass-panel p-2 rounded-b-2xl border-t-0 shadow-2xl overflow-hidden">
+          <canvas id="tetrisCanvas" width="300" height="600" class="bg-black/70 rounded-xl border border-white/10 shadow-inner block"></canvas>
+
+          <div id="canvasOverlay" class="absolute inset-0 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-20 rounded-2xl">
+            <h2 id="overlayTitle" class="font-display text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-fuchsia-500 mb-2">
+              B&D ULTRA TETRIS
+            </h2>
+            <p id="overlaySub" class="text-sm text-gray-300 mb-6 max-w-xs">
+              Erreiche 1.000 Punkte, um das Level abzuschließen und +100 Münzen zu erhalten!
+            </p>
+            <button onclick="startGame()" id="startBtn" class="px-8 py-3 rounded-2xl bg-gradient-to-r from-cyan-500 via-indigo-500 to-fuchsia-500 font-display font-bold text-white text-lg shadow-lg shadow-cyan-500/30 hover:scale-105 active:scale-95 transition">
+              <i class="fa-solid fa-play mr-2"></i> JETZT SPIELEN
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT SIDEBAR: NEXT PIECES -->
+      <div class="w-full lg:w-48 flex lg:flex-col items-center justify-between gap-3">
+        <div class="glass-panel p-3 rounded-2xl w-1/2 lg:w-full flex flex-col items-center shadow-lg">
+          <span class="text-xs font-display text-gray-400 uppercase tracking-widest mb-1">Nächste Steine</span>
+          <canvas id="nextCanvas" width="100" height="240" class="bg-black/40 rounded-xl border border-white/10"></canvas>
+        </div>
+
+        <div class="glass-panel p-3 rounded-2xl w-1/2 lg:w-full hidden lg:flex flex-col text-xs text-gray-400 space-y-1">
+          <span class="font-display text-cyan-400 font-bold mb-1">Steuerung:</span>
+          <div><kbd class="bg-white/10 px-1 rounded text-white">←</kbd> <kbd class="bg-white/10 px-1 rounded text-white">→</kbd> Links / Rechts</div>
+          <div><kbd class="bg-white/10 px-1 rounded text-white">↑</kbd> Drehen</div>
+          <div><kbd class="bg-white/10 px-1 rounded text-white">↓</kbd> Soft Drop</div>
+          <div><kbd class="bg-white/10 px-1 rounded text-white">Space</kbd> Hard Drop</div>
+          <div><kbd class="bg-white/10 px-1 rounded text-white">C</kbd> Hold Stein</div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TOUCH CONTROLS (MOBILE) -->
+    <div class="mt-4 w-full max-w-md mx-auto glass-panel p-3 rounded-2xl flex flex-col gap-2 md:hidden z-30">
+      <div class="grid grid-cols-4 gap-2">
+        <button onclick="handleTouchAction('hold')" class="touch-btn bg-white/10 p-3 rounded-xl flex flex-col items-center justify-center text-cyan-400 border border-white/10">
+          <i class="fa-solid fa-hand text-lg"></i>
+          <span class="text-[10px] font-display mt-1">HOLD</span>
+        </button>
+        <button onclick="handleTouchAction('rotate')" class="touch-btn bg-white/10 p-3 rounded-xl flex flex-col items-center justify-center text-indigo-400 border border-white/10">
+          <i class="fa-solid fa-rotate text-lg"></i>
+          <span class="text-[10px] font-display mt-1">DREHEN</span>
+        </button>
+        <button onclick="handleTouchAction('hardDrop')" class="touch-btn col-span-2 bg-gradient-to-r from-fuchsia-600 to-pink-600 p-3 rounded-xl flex items-center justify-center space-x-2 text-white font-display text-sm font-bold shadow-lg">
+          <i class="fa-solid fa-angles-down text-lg"></i>
+          <span>HARD DROP</span>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-3 gap-2">
+        <button onclick="handleTouchAction('left')" class="touch-btn bg-white/10 p-4 rounded-xl flex items-center justify-center text-white border border-white/10 active:bg-cyan-500/30">
+          <i class="fa-solid fa-arrow-left text-2xl"></i>
+        </button>
+        <button onclick="handleTouchAction('softDrop')" class="touch-btn bg-white/10 p-4 rounded-xl flex items-center justify-center text-amber-400 border border-white/10 active:bg-amber-500/30">
+          <i class="fa-solid fa-arrow-down text-2xl"></i>
+        </button>
+        <button onclick="handleTouchAction('right')" class="touch-btn bg-white/10 p-4 rounded-xl flex items-center justify-center text-white border border-white/10 active:bg-cyan-500/30">
+          <i class="fa-solid fa-arrow-right text-2xl"></i>
+        </button>
+      </div>
+    </div>
+
+
+    <!-- ==================== TAB 2: 100 LEVEL MAP ==================== -->
+    <div id="tab-levels" class="tab-content hidden w-full">
+      <div class="glass-panel p-4 md:p-6 rounded-3xl max-w-4xl mx-auto shadow-2xl">
+        <div class="flex items-center justify-between mb-4 border-b border-white/10 pb-4">
+          <div>
+            <h2 class="font-display text-2xl font-black text-cyan-400">100 LEVEL KARTEN-ÜBERSICHT</h2>
+            <p class="text-xs text-gray-400">Absolviere Level für +100 Münzen und schalte 100 Stufen frei!</p>
+          </div>
+          <div class="text-right">
+            <span class="text-xs text-gray-400 block">FORTSCHRITT</span>
+            <span id="levelMapProgressText" class="font-display text-lg text-emerald-400 font-bold">1 / 100</span>
+          </div>
+        </div>
+        <div class="grid grid-cols-5 sm:grid-cols-8 md:grid-cols-10 gap-2 max-h-[60vh] overflow-y-auto p-2" id="levelGridContainer"></div>
+      </div>
+    </div>
+
+
+    <!-- ==================== TAB 3: DAILY LUCKY WHEEL ==================== -->
+    <div id="tab-wheel" class="tab-content hidden w-full">
+      <div class="glass-panel p-6 rounded-3xl max-w-2xl mx-auto flex flex-col items-center text-center shadow-2xl relative overflow-hidden">
+        <h2 class="font-display text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-fuchsia-400 to-cyan-400 mb-1">
+          TÄGLICHES GLÜCKSRAD
+        </h2>
+        <p class="text-xs text-gray-300 mb-4">Drehe das Rad für Münzen, Aurora Nebel & den exklusiven RGB Rainbow Skin!</p>
+
+        <div class="relative my-4 flex items-center justify-center">
+          <div class="absolute -top-4 z-20 w-0 h-0 border-l-[14px] border-l-transparent border-r-[14px] border-r-transparent border-t-[28px] border-t-amber-400 drop-shadow-md"></div>
+          <canvas id="wheelCanvas" width="340" height="340" class="rounded-full shadow-2xl border-4 border-amber-400/50 bg-gray-900"></canvas>
+        </div>
+
+        <div class="mt-4 flex flex-col sm:flex-row items-center gap-3">
+          <button onclick="spinWheel()" id="spinBtn" class="px-8 py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-orange-500 to-red-500 font-display font-black text-gray-950 text-lg shadow-xl shadow-amber-500/30 hover:scale-105 active:scale-95 transition">
+            <i class="fa-solid fa-rotate-right mr-2"></i> JETZT DREHEN (GRATIS)
+          </button>
+          <button onclick="resetDailyWheelCooldown()" class="text-xs text-gray-400 hover:text-cyan-400 underline transition py-2">
+            [Dev Test: Cooldown zurücksetzen]
+          </button>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ==================== TAB 4: ITEM SHOP ==================== -->
+    <div id="tab-shop" class="tab-content hidden w-full">
+      <div class="glass-panel p-4 md:p-6 rounded-3xl max-w-4xl mx-auto shadow-2xl">
+        <div class="flex items-center justify-between mb-4 border-b border-white/10 pb-4">
+          <div>
+            <h2 class="font-display text-2xl font-black text-amber-400">ITEM SHOP</h2>
+            <p class="text-xs text-gray-400">Anpassen von Block-Skins, Hintergründen und Boostern mit Münzen!</p>
+          </div>
+          <div class="flex bg-black/40 p-1 rounded-xl border border-white/10 text-xs font-display">
+            <button onclick="switchShopSubTab('skins')" id="shop-sub-skins" class="px-3 py-1.5 rounded-lg bg-cyan-500/30 text-cyan-300 font-bold">Skins</button>
+            <button onclick="switchShopSubTab('bgs')" id="shop-sub-bgs" class="px-3 py-1.5 rounded-lg text-gray-400 hover:text-white">Hintergründe</button>
+            <button onclick="switchShopSubTab('powerups')" id="shop-sub-powerups" class="px-3 py-1.5 rounded-lg text-gray-400 hover:text-white">Booster</button>
+          </div>
+        </div>
+
+        <div id="shopSkinsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 max-h-[60vh] overflow-y-auto p-2"></div>
+        <div id="shopBgsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 max-h-[60vh] overflow-y-auto p-2 hidden"></div>
+        <div id="shopPowerupsGrid" class="grid grid-cols-1 sm:grid-cols-3 gap-4 max-h-[60vh] overflow-y-auto p-2 hidden"></div>
+      </div>
+    </div>
+
+
+    <!-- ==================== TAB 5: LEADERBOARD (LOOTLOCKER API WITH CORS PROXY FALLBACK) ==================== -->
+    <div id="tab-leaderboard" class="tab-content hidden w-full">
+      <div class="glass-panel p-4 md:p-6 rounded-3xl max-w-4xl mx-auto shadow-2xl">
+        
+        <!-- Leaderboard Header & Setup Controls -->
+        <div class="flex flex-col md:flex-row items-start md:items-center justify-between border-b border-white/10 pb-4 mb-4 gap-3">
+          <div>
+            <h2 class="font-display text-2xl font-black text-amber-300 flex items-center gap-2">
+              <i class="fa-solid fa-trophy text-amber-400"></i> ECHTE LOOTLOCKER RANGLISTE
+            </h2>
+            <p class="text-xs text-gray-400">Live-Anbindung mit automatischem CORS-Proxy für volle Browser-Kompatibilität!</p>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+            <!-- Sync Score Button -->
+            <button onclick="manualSyncHighscore()" class="px-3 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-xs font-bold rounded-xl text-gray-950 flex items-center space-x-1.5 shadow transition">
+              <i class="fa-solid fa-cloud-arrow-up"></i>
+              <span>Score hochladen</span>
+            </button>
+
+            <!-- Refresh Button -->
+            <button onclick="fetchRealLootLockerLeaderboard()" class="px-3 py-1.5 bg-indigo-600/60 hover:bg-indigo-500 text-xs rounded-xl border border-indigo-400/30 flex items-center space-x-1.5 transition">
+              <i class="fa-solid fa-arrows-rotate text-cyan-300" id="leaderboardSyncIcon"></i>
+              <span>Aktualisieren</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Leaderboard API Configuration Bar -->
+        <div class="bg-black/40 p-3 rounded-2xl border border-white/10 mb-4 flex flex-col sm:flex-row items-center justify-between text-xs gap-3">
+          <div class="flex items-center space-x-2 w-full sm:w-auto">
+            <span class="text-gray-400 font-display">Leaderboard Key:</span>
+            <input type="text" id="leaderboardKeyInput" value="global_highscore" onchange="updateLeaderboardKey(this.value)" class="bg-gray-900 border border-white/20 px-2 py-1 rounded text-cyan-300 font-mono text-xs focus:outline-none focus:border-cyan-400 w-36" />
+          </div>
+          <div class="flex items-center space-x-2 text-[11px] text-gray-400">
+            <span>Game ID: <strong class="text-white">108243</strong></span>
+            <span>•</span>
+            <span>Domain: <strong class="text-white">7fkn9s84</strong></span>
+          </div>
+        </div>
+
+        <!-- Leaderboard Status Message Container -->
+        <div id="leaderboardStatusNotice" class="hidden mb-4 p-3 rounded-xl text-xs flex items-center justify-between"></div>
+
+        <!-- Leaderboard Table -->
+        <div class="overflow-x-auto rounded-2xl border border-white/10 max-h-[50vh] overflow-y-auto">
+          <table class="w-full text-left border-collapse text-sm">
+            <thead class="bg-black/70 sticky top-0 font-display text-xs text-cyan-400 uppercase tracking-wider border-b border-white/10">
+              <tr>
+                <th class="p-3 text-center">Rang</th>
+                <th class="p-3">Spieler Name</th>
+                <th class="p-3 text-center">Level</th>
+                <th class="p-3 text-right">Highscore</th>
+                <th class="p-3 text-center">Aktion</th>
+              </tr>
+            </thead>
+            <tbody id="leaderboardTbody" class="divide-y divide-white/5 font-sans">
+              <!-- Dynamically Populated with Players -->
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+
+
+    <!-- ==================== TAB 6: QUESTS & ACHIEVEMENTS ==================== -->
+    <div id="tab-quests" class="tab-content hidden w-full">
+      <div class="glass-panel p-4 md:p-6 rounded-3xl max-w-4xl mx-auto shadow-2xl">
+        <h2 class="font-display text-2xl font-black text-purple-400 mb-2">TÄGLICHE QUESTS & ERFOLGE</h2>
+        <p class="text-xs text-gray-400 mb-4">Erfüllen Sie Aufgaben, um kostenlose Münzen und Trophäen freizuschalten.</p>
+        <div id="questsContainer" class="space-y-3 max-h-[60vh] overflow-y-auto pr-1"></div>
+      </div>
+    </div>
+
+  </main>
+
+
+  <!-- ==================== PLAYER PROFILE MODAL ==================== -->
+  <div id="profileModal" class="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50 hidden">
+    <div class="glass-panel-glow p-6 rounded-3xl max-w-md w-full relative">
+      <button onclick="closeProfileModal()" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-gray-300">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="flex items-center space-x-4 border-b border-white/10 pb-4 mb-4">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-cyan-500 via-indigo-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-cyan-500/30 text-3xl font-display font-black">
+          <span id="profAvatarLetter">P</span>
+        </div>
+        <div>
+          <h3 id="profName" class="font-display text-xl font-black text-white">Spieler Name</h3>
+          <span id="profTitleBadge" class="inline-block px-2 py-0.5 rounded text-[10px] font-display font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 mt-1">
+            LootLocker Player
+          </span>
+          <div id="profLootLockerId" class="text-[10px] text-gray-400 mt-0.5">ID: LL-98421</div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3 mb-4 text-xs">
+        <div class="bg-black/40 p-3 rounded-xl border border-white/5">
+          <span class="text-gray-400 block text-[10px] uppercase">Erreichtes Level</span>
+          <span id="profLevel" class="font-display text-lg text-cyan-400 font-bold">Level 1</span>
+        </div>
+        <div class="bg-black/40 p-3 rounded-xl border border-white/5">
+          <span class="text-gray-400 block text-[10px] uppercase">Highscore</span>
+          <span id="profHighscore" class="font-display text-lg text-emerald-400 font-bold">0 Pkt</span>
+        </div>
+        <div class="bg-black/40 p-3 rounded-xl border border-white/5">
+          <span class="text-gray-400 block text-[10px] uppercase">Geklärte Reihen</span>
+          <span id="profLines" class="font-display text-lg text-amber-400 font-bold">0</span>
+        </div>
+        <div class="bg-black/40 p-3 rounded-xl border border-white/5">
+          <span class="text-gray-400 block text-[10px] uppercase">Ranglisten-Platz</span>
+          <span id="profRank" class="font-display text-lg text-purple-400 font-bold">#1</span>
+        </div>
+      </div>
+
+      <div class="space-y-2 mb-4">
+        <div class="flex items-center justify-between text-xs bg-white/5 p-2 rounded-xl">
+          <span class="text-gray-400">Block Skin:</span>
+          <span id="profEquippedSkin" class="font-bold text-cyan-300">Klassik Neon</span>
+        </div>
+        <div class="flex items-center justify-between text-xs bg-white/5 p-2 rounded-xl">
+          <span class="text-gray-400">Hintergrund:</span>
+          <span id="profEquippedBg" class="font-bold text-fuchsia-300">Deep Space Grid</span>
+        </div>
+      </div>
+
+      <div>
+        <span class="text-xs font-display text-gray-400 uppercase tracking-widest block mb-2">Erfolge & Abzeichen</span>
+        <div id="profBadgesList" class="flex flex-wrap gap-2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <footer class="w-full glass-panel border-t border-white/5 px-4 py-2 text-center text-[11px] text-gray-400">
+    B&D Ultra Tetris • LootLocker Integration ID: <span class="text-cyan-400 font-mono">108243</span> • 100% Echte Spieler-Rangliste
+  </footer>
+
+  <!-- ==================== GAME LOGIC SCRIPT ==================== -->
+  <script>
+    /* ==========================================================================
+       1. LOOTLOCKER CONFIG & GLOBAL STATE
+       ========================================================================== */
+    const LOOTLOCKER_CONFIG = {
+      game_id: "108243",
+      domain_key: "7fkn9s84",
+      api_url: "https://7fkn9s84.api.lootlocker.com/game",
+      cors_proxy_prefix: "https://corsproxy.io/?",
+      api_key: "dev_75d16d48266c47d5a7fc02213645ed63",
+      leaderboard_key: "global_highscore"
+    };
+
+    let playerState = {
+      playerIdentifier: getOrCreateUUID(),
+      playerId: "LL-Guest",
+      playerName: "Spieler_" + Math.floor(1000 + Math.random() * 9000),
+      sessionToken: null,
+      coins: 300,
+      unlockedLevels: 1,
+      currentLevel: 1,
+      highscore: 0,
+      totalLinesCleared: 0,
+      equippedSkin: "classic",
+      equippedBg: "space",
+      unlockedSkins: ["classic"],
+      unlockedBgs: ["space"],
+      powerUps: { bomb: 1, slow: 1, laser: 1 },
+      lastSpinTimestamp: 0,
+      achievements: ["welcome"],
+      quests: [
+        { id: "q1", desc: "Kläre 10 Reihen", goal: 10, progress: 0, reward: 150, claimed: false },
+        { id: "q2", desc: "Erreiche Level 5", goal: 5, progress: 1, reward: 250, claimed: false },
+        { id: "q3", desc: "Erreiche 3.000 Punkte in einer Runde", goal: 3000, progress: 0, reward: 400, claimed: false }
+      ]
+    };
+
+    let realLeaderboardData = [];
+    let isLootLockerLive = false;
+    let isUsingCorsProxy = false;
+
+    function getOrCreateUUID() {
+      let id = localStorage.getItem('bd_tetris_player_uuid');
+      if (!id) {
+        id = 'player_' + Math.random().toString(36).substring(2, 11) + '_' + Date.now();
+        localStorage.setItem('bd_tetris_player_uuid', id);
+      }
+      return id;
+    }
+
+    /* ==========================================================================
+       2. SMART FETCH UTILITY WITH AUTOMATIC CORS PROXY FALLBACK
+       ========================================================================== */
+    async function smartLootLockerFetch(endpointPath, options = {}) {
+      const directUrl = `${LOOTLOCKER_CONFIG.api_url}${endpointPath}`;
+      const proxyUrl = `${LOOTLOCKER_CONFIG.cors_proxy_prefix}${encodeURIComponent(directUrl)}`;
+
+      // 1. Try Direct fetch first
+      try {
+        const directRes = await fetch(directUrl, options);
+        isUsingCorsProxy = false;
+        return directRes;
+      } catch (directErr) {
+        console.warn("Direct LootLocker request failed (CORS/Network). Retrying via CORS Proxy...", directErr);
+      }
+
+      // 2. Retry via CORS Proxy
+      try {
+        const proxyRes = await fetch(proxyUrl, options);
+        isUsingCorsProxy = true;
+        return proxyRes;
+      } catch (proxyErr) {
+        console.error("CORS Proxy request also failed:", proxyErr);
+        throw proxyErr;
+      }
+    }
+
+    /* ==========================================================================
+       3. LOOTLOCKER REST API INTEGRATION
+       ========================================================================== */
+    async function initLootLockerSession() {
+      const payload = {
+        game_key: LOOTLOCKER_CONFIG.api_key,
+        game_version: '1.0.0.0',
+        player_identifier: playerState.playerIdentifier,
+        development_mode: true
+      };
+
+      try {
+        const response = await smartLootLockerFetch('/v2/session/guest', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'LL-Version': '2021-03-01'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          playerState.sessionToken = data.session_token;
+          playerState.playerId = data.player_id ? `LL-${data.player_id}` : playerState.playerId;
+          isLootLockerLive = true;
+          updateLootLockerStatusUI(true);
+          console.log("LootLocker Live Session initialized successfully:", data);
+
+          // Sync Name with LootLocker
+          await setLootLockerPlayerName(playerState.playerName);
+          // Fetch Leaderboard
+          await fetchRealLootLockerLeaderboard();
+        } else {
+          throw new Error(`HTTP ${response.status}`);
+        }
+      } catch (err) {
+        console.warn("LootLocker API session initialization failed:", err);
+        isLootLockerLive = false;
+        updateLootLockerStatusUI(false, "Keine Serververbindung. Lokaler Backup-Modus aktiv.");
+      }
+    }
+
+    async function setLootLockerPlayerName(name) {
+      if (!isLootLockerLive || !playerState.sessionToken) return;
+      try {
+        await smartLootLockerFetch('/player/name', {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-session-token': playerState.sessionToken,
+            'LL-Version': '2021-03-01'
+          },
+          body: JSON.stringify({ name: name })
+        });
+      } catch (e) {
+        console.warn("Could not set LootLocker player name:", e);
+      }
+    }
+
+    async function submitLootLockerScore(scoreToSubmit) {
+      if (!isLootLockerLive || !playerState.sessionToken) {
+        console.warn("Score submission saved locally (No active LootLocker session).");
+        saveLocalHighscoreToSharedArray(scoreToSubmit);
+        renderLeaderboardTable(realLeaderboardData);
+        return;
+      }
+
+      const metadataObj = {
+        level: playerState.unlockedLevels,
+        skin: playerState.equippedSkin,
+        bg: playerState.equippedBg,
+        lines: playerState.totalLinesCleared,
+        achievements: playerState.achievements.length
+      };
+
+      try {
+        const response = await smartLootLockerFetch(`/leaderboards/${LOOTLOCKER_CONFIG.leaderboard_key}/submit`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-session-token': playerState.sessionToken,
+            'LL-Version': '2021-03-01'
+          },
+          body: JSON.stringify({
+            score: scoreToSubmit,
+            metadata: JSON.stringify(metadataObj)
+          })
+        });
+
+        if (response.ok) {
+          console.log("Highscore successfully submitted to LootLocker!");
+          fetchRealLootLockerLeaderboard();
+        } else {
+          const errData = await response.json().catch(() => ({}));
+          console.warn("Score submit response notice:", errData);
+          saveLocalHighscoreToSharedArray(scoreToSubmit);
+          renderLeaderboardTable(realLeaderboardData);
+        }
+      } catch (e) {
+        console.warn("Failed to submit score to LootLocker:", e);
+        saveLocalHighscoreToSharedArray(scoreToSubmit);
+        renderLeaderboardTable(realLeaderboardData);
+      }
+    }
+
+    async function fetchRealLootLockerLeaderboard() {
+      const syncIcon = document.getElementById('leaderboardSyncIcon');
+      if (syncIcon) syncIcon.classList.add('animate-spin');
+
+      if (!isLootLockerLive || !playerState.sessionToken) {
+        loadSharedLocalLeaderboards();
+        renderLeaderboardTable(realLeaderboardData);
+        if (syncIcon) syncIcon.classList.remove('animate-spin');
+        return;
+      }
+
+      try {
+        const response = await smartLootLockerFetch(`/leaderboards/${LOOTLOCKER_CONFIG.leaderboard_key}/list?count=50`, {
+          method: 'GET',
+          headers: {
+            'x-session-token': playerState.sessionToken,
+            'LL-Version': '2021-03-01'
+          }
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          realLeaderboardData = data.items || [];
+          renderLeaderboardTable(realLeaderboardData);
+          updateLootLockerStatusUI(true);
+        } else {
+          const errBody = await response.json().catch(() => ({}));
+          loadSharedLocalLeaderboards();
+          renderLeaderboardTable(realLeaderboardData);
+          updateLootLockerStatusUI(true, `Hinweis: Leaderboard Key "${LOOTLOCKER_CONFIG.leaderboard_key}" im Dashboard noch nicht zugewiesen? (${errBody.message || 'Standard key aktiv'})`);
+        }
+      } catch (err) {
+        console.warn("Failed to fetch leaderboard from LootLocker:", err);
+        loadSharedLocalLeaderboards();
+        renderLeaderboardTable(realLeaderboardData);
+        updateLootLockerStatusUI(false, "Netzwerkunterbrechung. Lokale Daten angezeigt.");
+      } finally {
+        if (syncIcon) syncIcon.classList.remove('animate-spin');
+      }
+    }
+
+    function saveLocalHighscoreToSharedArray(scoreVal) {
+      let shared = JSON.parse(localStorage.getItem('bd_shared_leaderboard') || '[]');
+      const existingIdx = shared.findIndex(x => x.member_id === playerState.playerIdentifier);
+      const entryObj = {
+        rank: 1,
+        score: scoreVal,
+        member_id: playerState.playerIdentifier,
+        player: { id: playerState.playerIdentifier, name: playerState.playerName },
+        metadata: JSON.stringify({
+          level: playerState.unlockedLevels,
+          skin: playerState.equippedSkin,
+          bg: playerState.equippedBg,
+          lines: playerState.totalLinesCleared
+        })
+      };
+
+      if (existingIdx >= 0) {
+        if (scoreVal > shared[existingIdx].score) {
+          shared[existingIdx] = entryObj;
+        }
+      } else {
+        shared.push(entryObj);
+      }
+
+      shared.sort((a, b) => b.score - a.score);
+      shared.forEach((item, index) => item.rank = index + 1);
+      localStorage.setItem('bd_shared_leaderboard', JSON.stringify(shared));
+      realLeaderboardData = shared;
+    }
+
+    function loadSharedLocalLeaderboards() {
+      let shared = JSON.parse(localStorage.getItem('bd_shared_leaderboard') || '[]');
+      if (playerState.highscore > 0) {
+        saveLocalHighscoreToSharedArray(playerState.highscore);
+      } else {
+        realLeaderboardData = shared;
+      }
+    }
+
+    function updateLootLockerStatusUI(isLive, customMsg) {
+      const badgeText = document.getElementById('llBadgeText');
+      const badgeDot = document.getElementById('llBadgeDot');
+      const statusNotice = document.getElementById('leaderboardStatusNotice');
+
+      if (isLive) {
+        const proxyTag = isUsingCorsProxy ? ' (via CORS Proxy)' : '';
+        if (badgeText) badgeText.innerText = `LootLocker Live${proxyTag}`;
+        if (badgeDot) badgeDot.className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
+      } else {
+        if (badgeText) badgeText.innerText = "LootLocker Offline (Backup)";
+        if (badgeDot) badgeDot.className = "w-2 h-2 rounded-full bg-amber-500";
+      }
+
+      if (statusNotice) {
+        if (customMsg) {
+          statusNotice.className = "mb-4 p-3 rounded-xl text-xs flex items-center justify-between bg-amber-500/20 text-amber-300 border border-amber-500/30";
+          statusNotice.innerHTML = `<span><i class="fa-solid fa-circle-info mr-1.5"></i> ${customMsg}</span>`;
+          statusNotice.classList.remove('hidden');
+        } else {
+          statusNotice.classList.add('hidden');
+        }
+      }
+    }
+
+    function updateLeaderboardKey(newKey) {
+      if (newKey && newKey.trim() !== "") {
+        LOOTLOCKER_CONFIG.leaderboard_key = newKey.trim();
+        fetchRealLootLockerLeaderboard();
+      }
+    }
+
+    function manualSyncHighscore() {
+      if (playerState.highscore > 0) {
+        submitLootLockerScore(playerState.highscore);
+        alert(`Dein Highscore von ${playerState.highscore} Pkt wird hochgeladen!`);
+      } else {
+        alert("Spiele zuerst eine Runde, um einen Highscore zu erzielen!");
+      }
+    }
+
+    function promptChangeName() {
+      const newName = prompt("Gib deinen gewünschten Spielernamen ein:", playerState.playerName);
+      if (newName && newName.trim() !== "") {
+        playerState.playerName = newName.trim().substring(0, 16);
+        savePlayerState();
+        updateGameUI();
+        setLootLockerPlayerName(playerState.playerName);
+      }
+    }
+
+    /* ==========================================================================
+       4. AUDIO SYNTHESIZER
+       ========================================================================== */
+    let audioCtx = null;
+    let isMuted = false;
+
+    function initAudio() {
+      if (!audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+      }
+    }
+
+    function toggleAudio() {
+      isMuted = !isMuted;
+      const btn = document.getElementById('audioBtn');
+      btn.innerHTML = isMuted ? '<i class="fa-solid fa-volume-xmark text-red-400"></i>' : '<i class="fa-solid fa-volume-high text-cyan-400"></i>';
+    }
+
+    function playSound(type) {
+      if (isMuted) return;
+      initAudio();
+      if (!audioCtx) return;
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      const now = audioCtx.currentTime;
+
+      if (type === 'move') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(400, now);
+        osc.frequency.exponentialRampToValueAtTime(200, now + 0.05);
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.05);
+        osc.start(now); osc.stop(now + 0.05);
+      } else if (type === 'rotate') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.exponentialRampToValueAtTime(600, now + 0.08);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.08);
+        osc.start(now); osc.stop(now + 0.08);
+      } else if (type === 'drop') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(50, now + 0.1);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.1);
+        osc.start(now); osc.stop(now + 0.1);
+      } else if (type === 'clear') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523.25, now);
+        osc.frequency.setValueAtTime(659.25, now + 0.08);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.25);
+        osc.start(now); osc.stop(now + 0.25);
+      } else if (type === 'tetris') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(523.25, now);
+        osc.frequency.setValueAtTime(659.25, now + 0.1);
+        osc.frequency.setValueAtTime(783.99, now + 0.2);
+        osc.frequency.setValueAtTime(1046.50, now + 0.3);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.45);
+        osc.start(now); osc.stop(now + 0.45);
+      } else if (type === 'win') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(587.33, now);
+        osc.frequency.setValueAtTime(880, now + 0.15);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.4);
+        osc.start(now); osc.stop(now + 0.4);
+      }
+    }
+
+    /* ==========================================================================
+       5. SHOP DATA DEFINITIONS
+       ========================================================================== */
+    const SHOP_SKINS = [
+      { id: "classic", name: "Klassik Neon", price: 0, desc: "Standard helle Neon-Farben", gradient: ["#00f0ff", "#ff007f", "#7000ff"] },
+      { id: "rgb", name: "RGB Rainbow Prism", price: "RAD", desc: "Exklusiv im Glücksrad! Pulsierende Neon-Farben", gradient: ["#ff0000", "#00ff00", "#0000ff"] },
+      { id: "gold", name: "Cyber Gold", price: 300, desc: "Luxuriöse Goldblöcke mit Schimmer", gradient: ["#ffd700", "#ffa500", "#fff8dc"] },
+      { id: "ice", name: "Eis-Kristall", price: 400, desc: "Frostige blaue Diamanten", gradient: ["#a5f3fc", "#0284c7", "#e0f2fe"] },
+      { id: "magma", name: "Magma Glut", price: 500, desc: "Feurige Lava-Kerne", gradient: ["#ef4444", "#dc2626", "#7f1d1d"] },
+      { id: "matrix", name: "Matrix Hacker", price: 650, desc: "Grüner Terminal Code-Look", gradient: ["#22c55e", "#15803d", "#052e16"] },
+      { id: "gameboy", name: "Retro Pixel", price: 800, desc: "Nostalgischer GameBoy Grün-Stil", gradient: ["#9bbc0f", "#8bac0f", "#306230"] },
+      { id: "galaxy", name: "Galaxie Sternenstaub", price: 1000, desc: "Kosmische lila Sternenhaufen", gradient: ["#c084fc", "#6b21a8", "#3b0764"] }
+    ];
+
+    const SHOP_BGS = [
+      { id: "space", name: "Deep Space Grid", price: 0, css: "bg-theme-space", desc: "Klassischer Weltraum-Hintergrund" },
+      { id: "aurora", name: "Aurora Nebel", price: "RAD", css: "bg-theme-aurora", desc: "Exklusiv im Glücksrad! Magisches Nordlicht" },
+      { id: "cyber", name: "Cyberpunk Tokio", price: 250, css: "bg-theme-cyber", desc: "Futuristische Neon-Metropole" },
+      { id: "synthwave", name: "Synthwave Sunset", price: 400, css: "bg-theme-synthwave", desc: "80er Retro Cyber-Sonnenuntergang" },
+      { id: "underwater", name: "Unterwasser Tiefsee", price: 550, css: "bg-theme-underwater", desc: "Beruhigende Ozean-Atmosphäre" },
+      { id: "volcano", name: "Vulkan Krater", price: 700, css: "bg-theme-volcano", desc: "Glühend heiße Lava-Höhle" },
+      { id: "goldtempel", name: "Goldener Tempel", price: 900, css: "bg-theme-gold", desc: "Legendäre goldene Kammer" }
+    ];
+
+    /* ==========================================================================
+       6. TETRIS ENGINE
+       ========================================================================== */
+    const COLS = 10;
+    const ROWS = 20;
+    const BLOCK_SIZE = 30;
+
+    const canvas = document.getElementById('tetrisCanvas');
+    const ctx = canvas.getContext('2d');
+    const holdCanvas = document.getElementById('holdCanvas');
+    const holdCtx = holdCanvas.getContext('2d');
+    const nextCanvas = document.getElementById('nextCanvas');
+    const nextCtx = nextCanvas.getContext('2d');
+
+    const SHAPES = {
+      I: [[0,0,0,0], [1,1,1,1], [0,0,0,0], [0,0,0,0]],
+      J: [[1,0,0], [1,1,1], [0,0,0]],
+      L: [[0,0,1], [1,1,1], [0,0,0]],
+      O: [[1,1], [1,1]],
+      S: [[0,1,1], [1,1,0], [0,0,0]],
+      T: [[0,1,0], [1,1,1], [0,0,0]],
+      Z: [[1,1,0], [0,1,1], [0,0,0]]
+    };
+
+    const PIECE_COLORS = {
+      I: '#00f0ff', J: '#0038ff', L: '#ff7700', O: '#ffe600', S: '#00ff66', T: '#a000ff', Z: '#ff0055'
+    };
+
+    let grid = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+    let currentPiece = null;
+    let holdPiece = null;
+    let canHold = true;
+    let nextPieces = [];
+    let score = 0;
+    let linesClearedInLevel = 0;
+    let isGameOver = false;
+    let isPaused = false;
+    let isPlaying = false;
+    let dropInterval = 800;
+    let lastDropTime = 0;
+    let floatingTexts = [];
+
+    class Piece {
+      constructor(type) {
+        this.type = type;
+        this.shape = SHAPES[type].map(row => [...row]);
+        this.color = PIECE_COLORS[type];
+        this.x = Math.floor(COLS / 2) - Math.ceil(this.shape[0].length / 2);
+        this.y = 0;
+      }
+    }
+
+    function generateNextPieces() {
+      const types = ['I', 'J', 'L', 'O', 'S', 'T', 'Z'];
+      while (nextPieces.length < 5) {
+        const rand = types[Math.floor(Math.random() * types.length)];
+        nextPieces.push(new Piece(rand));
+      }
+    }
+
+    function spawnPiece() {
+      generateNextPieces();
+      currentPiece = nextPieces.shift();
+      canHold = true;
+
+      if (checkCollision(currentPiece.x, currentPiece.y, currentPiece.shape)) {
+        handleGameOver();
+      }
+    }
+
+    function checkCollision(x, y, shape) {
+      for (let r = 0; r < shape.length; r++) {
+        for (let c = 0; c < shape[r].length; c++) {
+          if (shape[r][c]) {
+            let newX = x + c;
+            let newY = y + r;
+            if (newX < 0 || newX >= COLS || newY >= ROWS) return true;
+            if (newY >= 0 && grid[newY][newX]) return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    function rotatePiece(piece) {
+      const matrix = piece.shape;
+      const N = matrix.length;
+      const rotated = Array.from({ length: N }, () => Array(N).fill(0));
+
+      for (let r = 0; r < N; r++) {
+        for (let c = 0; c < N; c++) {
+          rotated[c][N - 1 - r] = matrix[r][c];
+        }
+      }
+
+      const kicks = [0, 1, -1, 2, -2];
+      for (let kick of kicks) {
+        if (!checkCollision(piece.x + kick, piece.y, rotated)) {
+          piece.x += kick;
+          piece.shape = rotated;
+          playSound('rotate');
+          break;
+        }
+      }
+    }
+
+    function lockPiece() {
+      playSound('drop');
+      const s = currentPiece.shape;
+      for (let r = 0; r < s.length; r++) {
+        for (let c = 0; c < s[r].length; c++) {
+          if (s[r][c]) {
+            let gy = currentPiece.y + r;
+            let gx = currentPiece.x + c;
+            if (gy >= 0 && gy < ROWS) {
+              grid[gy][gx] = currentPiece.color;
+            }
+          }
+        }
+      }
+
+      clearLines();
+      spawnPiece();
+    }
+
+    function clearLines() {
+      let linesCount = 0;
+      for (let r = ROWS - 1; r >= 0; r--) {
+        if (grid[r].every(cell => cell !== 0)) {
+          linesCount++;
+          grid.splice(r, 1);
+          grid.unshift(Array(COLS).fill(0));
+          r++;
+        }
+      }
+
+      if (linesCount > 0) {
+        let basePts = linesCount * 100;
+        let bonus = linesCount === 4 ? 400 : (linesCount === 3 ? 150 : (linesCount === 2 ? 50 : 0));
+        let gainedScore = basePts + bonus;
+
+        score += gainedScore;
+        linesClearedInLevel += linesCount;
+        playerState.totalLinesCleared += linesCount;
+
+        if (linesCount === 4) { playSound('tetris'); triggerScreenShake(); }
+        else { playSound('clear'); }
+
+        createFloatingText(`+${gainedScore} Pkt!`, canvas.width / 2, 200, '#00f0ff');
+        updateQuestProgress('q1', linesCount);
+
+        if (score >= 1000) {
+          handleLevelComplete();
+        }
+
+        updateGameUI();
+      }
+    }
+
+    function handleLevelComplete() {
+      playSound('win');
+      confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+
+      playerState.coins += 100;
+      createFloatingText("LEVEL COMPLETE! +100 Münzen", canvas.width / 2, 150, '#ffd700');
+
+      if (playerState.currentLevel < 100) {
+        playerState.currentLevel++;
+        if (playerState.currentLevel > playerState.unlockedLevels) {
+          playerState.unlockedLevels = playerState.currentLevel;
+        }
+      }
+
+      dropInterval = Math.max(100, 800 - (playerState.currentLevel * 7));
+      score = 0;
+      linesClearedInLevel = 0;
+
+      savePlayerState();
+      renderLevelGrid();
+      updateGameUI();
+    }
+
+    function handleGameOver() {
+      isGameOver = true;
+      isPlaying = false;
+
+      if (score > playerState.highscore) {
+        playerState.highscore = score;
+        submitLootLockerScore(score);
+      }
+      savePlayerState();
+
+      const overlay = document.getElementById('canvasOverlay');
+      document.getElementById('overlayTitle').innerText = "GAME OVER";
+      document.getElementById('overlaySub').innerText = `Punkte: ${score} | Level: ${playerState.currentLevel}`;
+      document.getElementById('startBtn').innerText = "ERNEUT VERSUCHEN";
+      overlay.classList.remove('hidden');
+    }
+
+    function holdCurrentPiece() {
+      if (!canHold || !currentPiece) return;
+      playSound('move');
+      if (!holdPiece) {
+        holdPiece = new Piece(currentPiece.type);
+        spawnPiece();
+      } else {
+        let temp = holdPiece.type;
+        holdPiece = new Piece(currentPiece.type);
+        currentPiece = new Piece(temp);
+      }
+      canHold = false;
+    }
+
+    function hardDrop() {
+      if (!currentPiece || isGameOver || !isPlaying) return;
+      while (!checkCollision(currentPiece.x, currentPiece.y + 1, currentPiece.shape)) {
+        currentPiece.y++;
+      }
+      triggerScreenShake();
+      lockPiece();
+    }
+
+    function softDrop() {
+      if (!currentPiece || isGameOver || !isPlaying) return;
+      if (!checkCollision(currentPiece.x, currentPiece.y + 1, currentPiece.shape)) {
+        currentPiece.y++;
+        playSound('move');
+      } else {
+        lockPiece();
+      }
+    }
+
+    function moveLeft() {
+      if (!currentPiece || isGameOver || !isPlaying) return;
+      if (!checkCollision(currentPiece.x - 1, currentPiece.y, currentPiece.shape)) {
+        currentPiece.x--;
+        playSound('move');
+      }
+    }
+
+    function moveRight() {
+      if (!currentPiece || isGameOver || !isPlaying) return;
+      if (!checkCollision(currentPiece.x + 1, currentPiece.y, currentPiece.shape)) {
+        currentPiece.x++;
+        playSound('move');
+      }
+    }
+
+    function usePowerUp(type) {
+      if (!isPlaying || isGameOver) return;
+      if (playerState.powerUps[type] > 0) {
+        playerState.powerUps[type]--;
+        playSound('win');
+
+        if (type === 'bomb') {
+          grid[ROWS - 1] = Array(COLS).fill(0);
+          grid[ROWS - 2] = Array(COLS).fill(0);
+          createFloatingText("BOMBE! -2 REIHEN", canvas.width / 2, 200, '#ef4444');
+          triggerScreenShake();
+        } else if (type === 'slow') {
+          let orig = dropInterval;
+          dropInterval *= 2;
+          createFloatingText("ZEITLUPE AKTIV!", canvas.width / 2, 200, '#00f0ff');
+          setTimeout(() => { dropInterval = orig; }, 15000);
+        } else if (type === 'laser') {
+          for (let r = ROWS - 1; r >= 0; r--) {
+            if (grid[r].some(c => c !== 0)) {
+              grid[r] = Array(COLS).fill(0);
+              break;
+            }
+          }
+          createFloatingText("LASER FREIGESETZT!", canvas.width / 2, 200, '#a855f7');
+        }
+
+        savePlayerState();
+        updateGameUI();
+      }
+    }
+
+    /* ==========================================================================
+       7. CANVAS RENDERER & SKINS
+       ========================================================================== */
+    function drawBlock(targetCtx, x, y, color, size, skinId) {
+      let activeSkin = skinId || playerState.equippedSkin;
+      targetCtx.save();
+
+      if (activeSkin === 'rgb') {
+        const time = Date.now() * 0.003;
+        const r = Math.floor(Math.sin(time) * 127 + 128);
+        const g = Math.floor(Math.sin(time + 2) * 127 + 128);
+        const b = Math.floor(Math.sin(time + 4) * 127 + 128);
+        targetCtx.fillStyle = `rgb(${r},${g},${b})`;
+      } else if (activeSkin === 'gold') {
+        let grad = targetCtx.createLinearGradient(x, y, x + size, y + size);
+        grad.addColorStop(0, '#ffd700'); grad.addColorStop(1, '#b8860b');
+        targetCtx.fillStyle = grad;
+      } else if (activeSkin === 'ice') {
+        let grad = targetCtx.createLinearGradient(x, y, x + size, y + size);
+        grad.addColorStop(0, '#e0f2fe'); grad.addColorStop(1, '#0284c7');
+        targetCtx.fillStyle = grad;
+      } else if (activeSkin === 'magma') {
+        let grad = targetCtx.createLinearGradient(x, y, x + size, y + size);
+        grad.addColorStop(0, '#ef4444'); grad.addColorStop(1, '#7f1d1d');
+        targetCtx.fillStyle = grad;
+      } else if (activeSkin === 'matrix') {
+        targetCtx.fillStyle = '#15803d';
+      } else if (activeSkin === 'gameboy') {
+        targetCtx.fillStyle = '#8bac0f';
+      } else if (activeSkin === 'galaxy') {
+        let grad = targetCtx.createLinearGradient(x, y, x + size, y + size);
+        grad.addColorStop(0, '#c084fc'); grad.addColorStop(1, '#3b0764');
+        targetCtx.fillStyle = grad;
+      } else {
+        targetCtx.fillStyle = color;
+      }
+
+      targetCtx.beginPath();
+      targetCtx.roundRect(x + 1, y + 1, size - 2, size - 2, 4);
+      targetCtx.fill();
+      targetCtx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+      targetCtx.lineWidth = 1.5;
+      targetCtx.stroke();
+      targetCtx.restore();
+    }
+
+    function drawGhostPiece() {
+      if (!currentPiece) return;
+      let ghostY = currentPiece.y;
+      while (!checkCollision(currentPiece.x, ghostY + 1, currentPiece.shape)) {
+        ghostY++;
+      }
+      const shape = currentPiece.shape;
+      ctx.save();
+      ctx.globalAlpha = 0.25;
+      for (let r = 0; r < shape.length; r++) {
+        for (let c = 0; c < shape[r].length; c++) {
+          if (shape[r][c]) {
+            drawBlock(ctx, (currentPiece.x + c) * BLOCK_SIZE, (ghostY + r) * BLOCK_SIZE, '#ffffff', BLOCK_SIZE);
+          }
+        }
+      }
+      ctx.restore();
+    }
+
+    function renderGameCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Grid lines
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.lineWidth = 1;
+      for (let r = 0; r <= ROWS; r++) {
+        ctx.beginPath(); ctx.moveTo(0, r * BLOCK_SIZE); ctx.lineTo(canvas.width, r * BLOCK_SIZE); ctx.stroke();
+      }
+      for (let c = 0; c <= COLS; c++) {
+        ctx.beginPath(); ctx.moveTo(c * BLOCK_SIZE, 0); ctx.lineTo(c * BLOCK_SIZE, canvas.height); ctx.stroke();
+      }
+
+      // Grid blocks
+      for (let r = 0; r < ROWS; r++) {
+        for (let c = 0; c < COLS; c++) {
+          if (grid[r][c]) drawBlock(ctx, c * BLOCK_SIZE, r * BLOCK_SIZE, grid[r][c], BLOCK_SIZE);
+        }
+      }
+
+      drawGhostPiece();
+
+      if (currentPiece) {
+        const s = currentPiece.shape;
+        for (let r = 0; r < s.length; r++) {
+          for (let c = 0; c < s[r].length; c++) {
+            if (s[r][c]) drawBlock(ctx, (currentPiece.x + c) * BLOCK_SIZE, (currentPiece.y + r) * BLOCK_SIZE, currentPiece.color, BLOCK_SIZE);
+          }
+        }
+      }
+
+      renderFloatingTexts();
+    }
+
+    function renderHoldAndNext() {
+      holdCtx.clearRect(0, 0, holdCanvas.width, holdCanvas.height);
+      if (holdPiece) {
+        const s = holdPiece.shape;
+        const offsetX = (holdCanvas.width - s[0].length * 20) / 2;
+        const offsetY = (holdCanvas.height - s.length * 20) / 2;
+        for (let r = 0; r < s.length; r++) {
+          for (let c = 0; c < s[r].length; c++) {
+            if (s[r][c]) drawBlock(holdCtx, offsetX + c * 20, offsetY + r * 20, holdPiece.color, 20);
+          }
+        }
+      }
+
+      nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
+      for (let i = 0; i < Math.min(3, nextPieces.length); i++) {
+        const p = nextPieces[i];
+        const s = p.shape;
+        const offsetX = (nextCanvas.width - s[0].length * 18) / 2;
+        const offsetY = 15 + i * 70;
+        for (let r = 0; r < s.length; r++) {
+          for (let c = 0; c < s[r].length; c++) {
+            if (s[r][c]) drawBlock(nextCtx, offsetX + c * 18, offsetY + r * 18, p.color, 18);
+          }
+        }
+      }
+    }
+
+    function gameLoop(time = 0) {
+      if (isPlaying && !isPaused) {
+        const deltaTime = time - lastDropTime;
+        if (deltaTime > dropInterval) {
+          softDrop();
+          lastDropTime = time;
+        }
+        renderGameCanvas();
+        renderHoldAndNext();
+      }
+      requestAnimationFrame(gameLoop);
+    }
+
+    function startGame() {
+      initAudio();
+      grid = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+      nextPieces = [];
+      holdPiece = null;
+      score = 0;
+      linesClearedInLevel = 0;
+      isGameOver = false;
+      isPlaying = true;
+      isPaused = false;
+      dropInterval = Math.max(100, 800 - (playerState.currentLevel * 7));
+
+      document.getElementById('canvasOverlay').classList.add('hidden');
+      spawnPiece();
+      updateGameUI();
+    }
+
+    function createFloatingText(text, x, y, color) {
+      floatingTexts.push({ text, x, y, color, alpha: 1.0 });
+    }
+
+    function renderFloatingTexts() {
+      for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        let ft = floatingTexts[i];
+        ctx.save();
+        ctx.globalAlpha = ft.alpha;
+        ctx.font = 'bold 16px Orbitron';
+        ctx.fillStyle = ft.color;
+        ctx.textAlign = 'center';
+        ctx.fillText(ft.text, ft.x, ft.y);
+        ctx.restore();
+        ft.y -= 0.8;
+        ft.alpha -= 0.015;
+        if (ft.alpha <= 0) floatingTexts.splice(i, 1);
+      }
+    }
+
+    function triggerScreenShake() {
+      const container = document.getElementById('tetrisCanvas');
+      container.classList.add('shake');
+      setTimeout(() => container.classList.remove('shake'), 200);
+    }
+
+    /* ==========================================================================
+       8. 100 LEVEL MAP
+       ========================================================================== */
+    function renderLevelGrid() {
+      const container = document.getElementById('levelGridContainer');
+      container.innerHTML = '';
+      document.getElementById('levelMapProgressText').innerText = `${playerState.unlockedLevels} / 100`;
+
+      for (let i = 1; i <= 100; i++) {
+        const isUnlocked = i <= playerState.unlockedLevels;
+        const isCurrent = i === playerState.currentLevel;
+
+        const btn = document.createElement('button');
+        btn.className = `h-14 rounded-xl font-display text-xs font-bold flex flex-col items-center justify-center transition-all ${
+          isCurrent
+            ? 'bg-gradient-to-tr from-cyan-500 to-fuchsia-500 text-white shadow-lg ring-2 ring-white scale-105'
+            : isUnlocked
+            ? 'bg-white/10 hover:bg-cyan-500/30 text-cyan-300 border border-white/10'
+            : 'bg-black/40 text-gray-600 border border-white/5 cursor-not-allowed'
+        }`;
+
+        btn.innerHTML = `
+          <span>Lvl ${i}</span>
+          <span class="text-[9px] mt-0.5">${
+            isUnlocked ? (i < playerState.unlockedLevels ? '<i class="fa-solid fa-check text-emerald-400"></i>' : '<i class="fa-solid fa-play text-white"></i>') : '<i class="fa-solid fa-lock"></i>'
+          }</span>
+        `;
+
+        if (isUnlocked) {
+          btn.onclick = () => {
+            playerState.currentLevel = i;
+            savePlayerState();
+            switchTab('game');
+            startGame();
+          };
+        }
+        container.appendChild(btn);
+      }
+    }
+
+    /* ==========================================================================
+       9. LUCKY WHEEL ENGINE
+       ========================================================================== */
+    const WHEEL_SECTORS = [
+      { label: "50 Münzen", reward: { type: "coins", val: 50 }, color: "#00f0ff" },
+      { label: "Aurora BG", reward: { type: "bg", val: "aurora" }, color: "#a000ff" },
+      { label: "100 Münzen", reward: { type: "coins", val: 100 }, color: "#00ff66" },
+      { label: "200 Münzen", reward: { type: "coins", val: 200 }, color: "#ff007f" },
+      { label: "RGB Skin", reward: { type: "skin", val: "rgb" }, color: "#ffd700" },
+      { label: "300 Münzen", reward: { type: "coins", val: 300 }, color: "#00f0ff" },
+      { label: "500 Münzen", reward: { type: "coins", val: 500 }, color: "#ff7700" },
+      { label: "750 MEGA", reward: { type: "coins", val: 750 }, color: "#e11d48" }
+    ];
+
+    let wheelAngle = 0;
+    let isSpinning = false;
+
+    function drawWheel() {
+      const wCanvas = document.getElementById('wheelCanvas');
+      const wCtx = wCanvas.getContext('2d');
+      const numSectors = WHEEL_SECTORS.length;
+      const arc = (2 * Math.PI) / numSectors;
+      const radius = wCanvas.width / 2;
+
+      wCtx.clearRect(0, 0, wCanvas.width, wCanvas.height);
+      wCtx.save();
+      wCtx.translate(radius, radius);
+      wCtx.rotate(wheelAngle);
+
+      for (let i = 0; i < numSectors; i++) {
+        let angle = i * arc;
+        wCtx.beginPath();
+        wCtx.fillStyle = WHEEL_SECTORS[i].color;
+        wCtx.moveTo(0, 0);
+        wCtx.arc(0, 0, radius - 10, angle, angle + arc);
+        wCtx.lineTo(0, 0);
+        wCtx.fill();
+        wCtx.strokeStyle = 'rgba(0,0,0,0.4)';
+        wCtx.lineWidth = 2;
+        wCtx.stroke();
+
+        wCtx.save();
+        wCtx.rotate(angle + arc / 2);
+        wCtx.textAlign = 'right';
+        wCtx.fillStyle = '#090a16';
+        wCtx.font = 'bold 12px Orbitron';
+        wCtx.fillText(WHEEL_SECTORS[i].label, radius - 25, 4);
+        wCtx.restore();
+      }
+
+      wCtx.beginPath();
+      wCtx.fillStyle = '#090a16';
+      wCtx.arc(0, 0, 30, 0, 2 * Math.PI);
+      wCtx.fill();
+      wCtx.strokeStyle = '#ffd700';
+      wCtx.lineWidth = 3;
+      wCtx.stroke();
+      wCtx.restore();
+    }
+
+    function spinWheel() {
+      if (isSpinning) return;
+      const now = Date.now();
+      const oneDay = 24 * 60 * 60 * 1000;
+
+      if (now - playerState.lastSpinTimestamp < oneDay) {
+        alert("Du hast heute bereits am Glücksrad gedreht! Komme morgen wieder!");
+        return;
+      }
+
+      isSpinning = true;
+      playerState.lastSpinTimestamp = now;
+      savePlayerState();
+
+      const spinRounds = 5 + Math.random() * 5;
+      const targetAngle = wheelAngle + spinRounds * 2 * Math.PI + Math.random() * 2 * Math.PI;
+      const duration = 4500;
+      const startTime = Date.now();
+
+      function animateSpin() {
+        const elapsed = Date.now() - startTime;
+        if (elapsed < duration) {
+          const progress = elapsed / duration;
+          const easeProgress = 1 - Math.pow(1 - progress, 3);
+          wheelAngle = targetAngle * easeProgress;
+          drawWheel();
+          requestAnimationFrame(animateSpin);
+        } else {
+          wheelAngle = targetAngle % (2 * Math.PI);
+          drawWheel();
+          isSpinning = false;
+          handleWheelWin();
+        }
+      }
+      animateSpin();
+    }
+
+    function handleWheelWin() {
+      const numSectors = WHEEL_SECTORS.length;
+      const arc = (2 * Math.PI) / numSectors;
+      let normalized = (3 * Math.PI / 2 - wheelAngle) % (2 * Math.PI);
+      if (normalized < 0) normalized += 2 * Math.PI;
+
+      const index = Math.floor(normalized / arc) % numSectors;
+      const sector = WHEEL_SECTORS[index];
+
+      playSound('win');
+      confetti({ particleCount: 120, spread: 80 });
+
+      let winMsg = "";
+      if (sector.reward.type === 'coins') {
+        playerState.coins += sector.reward.val;
+        winMsg = `Gewinn: +${sector.reward.val} Münzen!`;
+      } else if (sector.reward.type === 'skin') {
+        if (!playerState.unlockedSkins.includes('rgb')) {
+          playerState.unlockedSkins.push('rgb');
+          winMsg = "UNGLAUBLICH! Du hast den exklusiven RGB Rainbow Skin gewonnen!";
+        } else {
+          playerState.coins += 500;
+          winMsg = "Skin bereits im Besitz! Du erhältst 500 Ersatz-Münzen!";
+        }
+      } else if (sector.reward.type === 'bg') {
+        if (!playerState.unlockedBgs.includes('aurora')) {
+          playerState.unlockedBgs.push('aurora');
+          winMsg = "HURRA! Du hast den Aurora Nebel Hintergrund gewonnen!";
+        } else {
+          playerState.coins += 500;
+          winMsg = "Hintergrund bereits im Besitz! Du erhältst 500 Ersatz-Münzen!";
+        }
+      }
+
+      savePlayerState();
+      updateGameUI();
+      alert(`🎉 GLÜCKSRAD GEWINN! 🎉\n\n${winMsg}`);
+    }
+
+    function resetDailyWheelCooldown() {
+      playerState.lastSpinTimestamp = 0;
+      savePlayerState();
+      alert("Dev Test: Glücksrad Cooldown wurde zurückgesetzt!");
+    }
+
+    /* ==========================================================================
+       10. ITEM SHOP
+       ========================================================================== */
+    function switchShopSubTab(tab) {
+      document.getElementById('shopSkinsGrid').classList.toggle('hidden', tab !== 'skins');
+      document.getElementById('shopBgsGrid').classList.toggle('hidden', tab !== 'bgs');
+      document.getElementById('shopPowerupsGrid').classList.toggle('hidden', tab !== 'powerups');
+
+      document.getElementById('shop-sub-skins').className = tab === 'skins' ? 'px-3 py-1.5 rounded-lg bg-cyan-500/30 text-cyan-300 font-bold' : 'px-3 py-1.5 rounded-lg text-gray-400 hover:text-white';
+      document.getElementById('shop-sub-bgs').className = tab === 'bgs' ? 'px-3 py-1.5 rounded-lg bg-cyan-500/30 text-cyan-300 font-bold' : 'px-3 py-1.5 rounded-lg text-gray-400 hover:text-white';
+      document.getElementById('shop-sub-powerups').className = tab === 'powerups' ? 'px-3 py-1.5 rounded-lg bg-cyan-500/30 text-cyan-300 font-bold' : 'px-3 py-1.5 rounded-lg text-gray-400 hover:text-white';
+    }
+
+    function renderShop() {
+      const skinGrid = document.getElementById('shopSkinsGrid');
+      skinGrid.innerHTML = SHOP_SKINS.map(item => {
+        const isOwned = playerState.unlockedSkins.includes(item.id);
+        const isEquipped = playerState.equippedSkin === item.id;
+        return `
+          <div class="glass-panel p-4 rounded-2xl flex flex-col items-center justify-between text-center border ${isEquipped ? 'border-cyan-400 ring-2 ring-cyan-400/50' : 'border-white/10'}">
+            <div class="w-14 h-14 rounded-xl my-2 flex items-center justify-center shadow-lg" style="background: linear-gradient(135deg, ${item.gradient.join(',')})">
+              <i class="fa-solid fa-cube text-2xl text-white drop-shadow"></i>
+            </div>
+            <h4 class="font-display font-bold text-sm text-white">${item.name}</h4>
+            <p class="text-[10px] text-gray-400 my-1">${item.desc}</p>
+            ${
+              isEquipped
+                ? `<span class="mt-2 text-xs text-cyan-400 font-bold uppercase">Ausrüstung</span>`
+                : isOwned
+                ? `<button onclick="equipItem('skin', '${item.id}')" class="mt-2 w-full py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-300 text-xs font-bold border border-cyan-500/30">Ausrüsten</button>`
+                : typeof item.price === 'number'
+                ? `<button onclick="buyItem('skin', '${item.id}', ${item.price})" class="mt-2 w-full py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-gray-950 font-display text-xs font-bold flex items-center justify-center space-x-1">
+                     <i class="fa-solid fa-coins"></i> <span>${item.price}</span>
+                   </button>`
+                : `<span class="mt-2 text-[10px] text-amber-300 bg-amber-500/10 px-2 py-1 rounded">Glücksrad Gewinn</span>`
+            }
+          </div>
+        `;
+      }).join('');
+
+      const bgGrid = document.getElementById('shopBgsGrid');
+      bgGrid.innerHTML = SHOP_BGS.map(item => {
+        const isOwned = playerState.unlockedBgs.includes(item.id);
+        const isEquipped = playerState.equippedBg === item.id;
+        return `
+          <div class="glass-panel p-4 rounded-2xl flex flex-col items-center justify-between text-center border ${isEquipped ? 'border-fuchsia-400 ring-2 ring-fuchsia-400/50' : 'border-white/10'}">
+            <div class="w-full h-16 rounded-xl my-2 border border-white/20 ${item.css} flex items-center justify-center">
+              <span class="font-display text-xs text-white drop-shadow">${item.name}</span>
+            </div>
+            <p class="text-[10px] text-gray-400 my-1">${item.desc}</p>
+            ${
+              isEquipped
+                ? `<span class="mt-2 text-xs text-fuchsia-400 font-bold uppercase">Aktiv</span>`
+                : isOwned
+                ? `<button onclick="equipItem('bg', '${item.id}')" class="mt-2 w-full py-1.5 rounded-xl bg-fuchsia-500/20 hover:bg-fuchsia-500/40 text-fuchsia-300 text-xs font-bold border border-fuchsia-500/30">Aktivieren</button>`
+                : typeof item.price === 'number'
+                ? `<button onclick="buyItem('bg', '${item.id}', ${item.price})" class="mt-2 w-full py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-gray-950 font-display text-xs font-bold flex items-center justify-center space-x-1">
+                     <i class="fa-solid fa-coins"></i> <span>${item.price}</span>
+                   </button>`
+                : `<span class="mt-2 text-[10px] text-amber-300 bg-amber-500/10 px-2 py-1 rounded">Glücksrad Gewinn</span>`
+            }
+          </div>
+        `;
+      }).join('');
+
+      const pwGrid = document.getElementById('shopPowerupsGrid');
+      pwGrid.innerHTML = `
+        <div class="glass-panel p-4 rounded-2xl flex flex-col items-center text-center">
+          <i class="fa-solid fa-bomb text-red-400 text-3xl mb-2"></i>
+          <h4 class="font-display font-bold text-sm">Spreng-Bombe</h4>
+          <p class="text-[10px] text-gray-400 my-1">Zerstört sofort die untersten 2 Reihen.</p>
+          <span class="text-xs font-bold text-cyan-300 my-1">Im Besitz: ${playerState.powerUps.bomb}</span>
+          <button onclick="buyPowerUp('bomb', 100)" class="mt-2 w-full py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-gray-950 font-display text-xs font-bold">100 Münzen</button>
+        </div>
+        <div class="glass-panel p-4 rounded-2xl flex flex-col items-center text-center">
+          <i class="fa-solid fa-hourglass-half text-cyan-400 text-3xl mb-2"></i>
+          <h4 class="font-display font-bold text-sm">Zeitlupe</h4>
+          <p class="text-[10px] text-gray-400 my-1">Verlangsamt Fallgeschwindigkeit für 15 Sek.</p>
+          <span class="text-xs font-bold text-cyan-300 my-1">Im Besitz: ${playerState.powerUps.slow}</span>
+          <button onclick="buyPowerUp('slow', 150)" class="mt-2 w-full py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-gray-950 font-display text-xs font-bold">150 Münzen</button>
+        </div>
+        <div class="glass-panel p-4 rounded-2xl flex flex-col items-center text-center">
+          <i class="fa-solid fa-wand-magic-sparkles text-purple-400 text-3xl mb-2"></i>
+          <h4 class="font-display font-bold text-sm">Laser-Strahler</h4>
+          <p class="text-[10px] text-gray-400 my-1">Löscht eine untere Block-Reihe auf Knopfdruck.</p>
+          <span class="text-xs font-bold text-cyan-300 my-1">Im Besitz: ${playerState.powerUps.laser}</span>
+          <button onclick="buyPowerUp('laser', 200)" class="mt-2 w-full py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-gray-950 font-display text-xs font-bold">200 Münzen</button>
+        </div>
+      `;
+    }
+
+    function buyItem(type, id, price) {
+      if (playerState.coins < price) { alert("Nicht genügend Münzen!"); return; }
+      playerState.coins -= price;
+      playSound('win');
+      if (type === 'skin') playerState.unlockedSkins.push(id);
+      if (type === 'bg') playerState.unlockedBgs.push(id);
+      savePlayerState();
+      updateGameUI();
+      renderShop();
+    }
+
+    function equipItem(type, id) {
+      if (type === 'skin') playerState.equippedSkin = id;
+      if (type === 'bg') {
+        playerState.equippedBg = id;
+        applyBackgroundTheme();
+      }
+      savePlayerState();
+      renderShop();
+    }
+
+    function buyPowerUp(type, cost) {
+      if (playerState.coins < cost) { alert("Nicht genügend Münzen!"); return; }
+      playerState.coins -= cost;
+      playerState.powerUps[type]++;
+      playSound('win');
+      savePlayerState();
+      updateGameUI();
+      renderShop();
+    }
+
+    function applyBackgroundTheme() {
+      const body = document.getElementById('appBody');
+      const bgObj = SHOP_BGS.find(b => b.id === playerState.equippedBg);
+      if (bgObj) {
+        body.className = `${bgObj.css} text-white h-full font-sans antialiased select-none overflow-x-hidden flex flex-col justify-between`;
+      }
+    }
+
+    /* ==========================================================================
+       11. LEADERBOARD RENDERER & PLAYER PROFILE MODAL
+       ========================================================================== */
+    function renderLeaderboardTable(items) {
+      const tbody = document.getElementById('leaderboardTbody');
+      tbody.innerHTML = '';
+
+      if (!items || items.length === 0) {
+        let hasLocal = false;
+        if (playerState.highscore > 0) {
+          hasLocal = true;
+          const tr = document.createElement('tr');
+          tr.className = "bg-cyan-500/10 font-bold hover:bg-cyan-500/20 cursor-pointer";
+          tr.onclick = () => openOwnProfile();
+          tr.innerHTML = `
+            <td class="p-3 text-center font-display">🥇 #1</td>
+            <td class="p-3 font-semibold flex items-center space-x-2">
+              <span class="text-white">${playerState.playerName}</span>
+              <span class="px-1.5 py-0.5 rounded text-[10px] bg-cyan-500/30 text-cyan-300">Du</span>
+            </td>
+            <td class="p-3 text-center text-cyan-300 font-display">Lvl ${playerState.unlockedLevels}</td>
+            <td class="p-3 text-right font-display text-emerald-400 font-bold">${playerState.highscore.toLocaleString()}</td>
+            <td class="p-3 text-center">
+              <button class="px-2 py-1 bg-white/10 hover:bg-cyan-500/30 text-xs rounded-lg text-cyan-300">Mein Profil</button>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        }
+
+        const emptyTr = document.createElement('tr');
+        emptyTr.innerHTML = `
+          <td colspan="5" class="p-8 text-center text-gray-400">
+            <i class="fa-solid fa-users-slash text-3xl mb-2 text-gray-500 block"></i>
+            <span class="font-semibold block mb-1">Noch keine Spielereinträge geladen!</span>
+            <span class="text-xs text-gray-500">Klicke oben auf <strong>"Score hochladen"</strong>, um deine Punkte zu veröffentlichen!</span>
+          </td>
+        `;
+        tbody.appendChild(emptyTr);
+        return;
+      }
+
+      items.forEach((entry, idx) => {
+        let pName = (entry.player && entry.player.name) ? entry.player.name : `LootLocker Spieler ${entry.member_id || entry.rank}`;
+        let isLocalUser = (entry.player && entry.player.id && `LL-${entry.player.id}` === playerState.playerId) || (entry.member_id === playerState.playerIdentifier);
+
+        let meta = { level: 1, skin: 'classic', bg: 'space', lines: 0 };
+        if (entry.metadata) {
+          try {
+            meta = typeof entry.metadata === 'string' ? JSON.parse(entry.metadata) : entry.metadata;
+          } catch(e){}
+        }
+
+        const tr = document.createElement('tr');
+        tr.className = `hover:bg-white/5 transition cursor-pointer ${isLocalUser ? 'bg-cyan-500/10 font-bold' : ''}`;
+        tr.onclick = () => openRealPlayerProfile(entry, meta);
+
+        tr.innerHTML = `
+          <td class="p-3 text-center font-display">
+            ${entry.rank === 1 ? '🥇' : entry.rank === 2 ? '🥈' : entry.rank === 3 ? '🥉' : '#' + entry.rank}
+          </td>
+          <td class="p-3 font-semibold flex items-center space-x-2">
+            <span class="text-white">${pName}</span>
+            ${isLocalUser ? `<span class="px-1.5 py-0.5 rounded text-[10px] bg-cyan-500/30 text-cyan-300">Du</span>` : ''}
+          </td>
+          <td class="p-3 text-center text-cyan-300 font-display">Lvl ${meta.level || 1}</td>
+          <td class="p-3 text-right font-display text-emerald-400 font-bold">${(entry.score || 0).toLocaleString()}</td>
+          <td class="p-3 text-center">
+            <button class="px-2 py-1 bg-white/10 hover:bg-cyan-500/30 text-xs rounded-lg text-cyan-300">Profil</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function openRealPlayerProfile(entry, meta) {
+      let pName = (entry.player && entry.player.name) ? entry.player.name : `LootLocker Spieler #${entry.rank}`;
+      let pId = (entry.player && entry.player.id) ? `LL-${entry.player.id}` : `LL-${entry.member_id || 'Player'}`;
+
+      document.getElementById('profName').innerText = pName;
+      document.getElementById('profAvatarLetter').innerText = pName.charAt(0).toUpperCase();
+      document.getElementById('profLootLockerId').innerText = `ID: ${pId}`;
+      document.getElementById('profLevel').innerText = `Level ${meta.level || 1}`;
+      document.getElementById('profHighscore').innerText = `${(entry.score || 0).toLocaleString()} Pkt`;
+      document.getElementById('profLines').innerText = `${meta.lines || 0}`;
+      document.getElementById('profRank').innerText = `#${entry.rank || 1}`;
+
+      const skinObj = SHOP_SKINS.find(s => s.id === meta.skin);
+      document.getElementById('profEquippedSkin').innerText = skinObj ? skinObj.name : (meta.skin || 'Klassik Neon');
+
+      const bgObj = SHOP_BGS.find(b => b.id === meta.bg);
+      document.getElementById('profEquippedBg').innerText = bgObj ? bgObj.name : (meta.bg || 'Deep Space Grid');
+
+      const badgesContainer = document.getElementById('profBadgesList');
+      badgesContainer.innerHTML = `
+        <span class="px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-bold">🌐 LootLocker Player</span>
+        <span class="px-2.5 py-1 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-xs font-bold">Level ${meta.level || 1}</span>
+      `;
+
+      document.getElementById('profileModal').classList.remove('hidden');
+    }
+
+    function openOwnProfile() {
+      openRealPlayerProfile({
+        rank: 1,
+        score: playerState.highscore,
+        player: { name: playerState.playerName, id: playerState.playerId.replace('LL-', '') }
+      }, {
+        level: playerState.unlockedLevels,
+        skin: playerState.equippedSkin,
+        bg: playerState.equippedBg,
+        lines: playerState.totalLinesCleared
+      });
+    }
+
+    function closeProfileModal() {
+      document.getElementById('profileModal').classList.add('hidden');
+    }
+
+    /* ==========================================================================
+       12. QUESTS
+       ========================================================================== */
+    function renderQuests() {
+      const container = document.getElementById('questsContainer');
+      container.innerHTML = playerState.quests.map(q => `
+        <div class="glass-panel p-4 rounded-2xl flex items-center justify-between border border-white/10">
+          <div>
+            <h4 class="font-display font-bold text-sm text-cyan-300">${q.desc}</h4>
+            <div class="w-48 bg-gray-800 h-2 rounded-full overflow-hidden mt-2">
+              <div class="bg-cyan-400 h-full" style="width: ${Math.min(100, (q.progress / q.goal) * 100)}%"></div>
+            </div>
+            <span class="text-[10px] text-gray-400 mt-1 block">${q.progress} / ${q.goal}</span>
+          </div>
+          <div>
+            ${
+              q.claimed
+                ? `<span class="text-xs text-emerald-400 font-bold">Abgeholt <i class="fa-solid fa-check"></i></span>`
+                : q.progress >= q.goal
+                ? `<button onclick="claimQuestReward('${q.id}')" class="px-4 py-2 bg-gradient-to-r from-amber-400 to-orange-500 text-gray-950 font-display font-bold text-xs rounded-xl shadow-lg">Belohnung +${q.reward} Münzen</button>`
+                : `<span class="text-xs text-gray-500 font-bold">+${q.reward} Münzen</span>`
+            }
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function updateQuestProgress(id, amount) {
+      const q = playerState.quests.find(x => x.id === id);
+      if (q && !q.claimed) {
+        q.progress += amount;
+        savePlayerState();
+      }
+    }
+
+    function claimQuestReward(id) {
+      const q = playerState.quests.find(x => x.id === id);
+      if (q && !q.claimed && q.progress >= q.goal) {
+        q.claimed = true;
+        playerState.coins += q.reward;
+        playSound('win');
+        confetti({ particleCount: 50, spread: 50 });
+        savePlayerState();
+        updateGameUI();
+        renderQuests();
+      }
+    }
+
+    /* ==========================================================================
+       13. STATE PERSISTENCE & UI UPDATE
+       ========================================================================== */
+    function savePlayerState() {
+      localStorage.setItem('bd_ultra_tetris_save', JSON.stringify(playerState));
+    }
+
+    function loadPlayerState() {
+      const saved = localStorage.getItem('bd_ultra_tetris_save');
+      if (saved) {
+        try {
+          playerState = { ...playerState, ...JSON.parse(saved) };
+        } catch(e){}
+      }
+    }
+
+    function updateGameUI() {
+      document.getElementById('coinBalanceDisplay').innerText = playerState.coins.toLocaleString();
+      document.getElementById('playerDisplayName').innerText = playerState.playerName;
+      document.getElementById('currentLevelDisplay').innerText = playerState.currentLevel;
+      document.getElementById('currentScoreDisplay').innerText = score.toLocaleString();
+      document.getElementById('currentLinesDisplay').innerText = linesClearedInLevel;
+
+      let pct = Math.min(100, (score / 1000) * 100);
+      document.getElementById('levelProgressBar').style.width = pct + '%';
+      document.getElementById('levelProgressText').innerText = `${score} / 1000 Pkt`;
+
+      document.getElementById('pwCountBomb').innerText = `x${playerState.powerUps.bomb}`;
+      document.getElementById('pwCountSlow').innerText = `x${playerState.powerUps.slow}`;
+      document.getElementById('pwCountLaser').innerText = `x${playerState.powerUps.laser}`;
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+
+      document.querySelectorAll('.nav-tab-btn').forEach(btn => {
+        btn.classList.remove('active', 'bg-cyan-500/20', 'text-cyan-300', 'border', 'border-cyan-500/40');
+        btn.classList.add('text-gray-400');
+      });
+
+      const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+      if (activeBtn) {
+        activeBtn.classList.add('active', 'bg-cyan-500/20', 'text-cyan-300', 'border', 'border-cyan-500/40');
+        activeBtn.classList.remove('text-gray-400');
+      }
+
+      if (tabId === 'levels') renderLevelGrid();
+      if (tabId === 'wheel') drawWheel();
+      if (tabId === 'shop') renderShop();
+      if (tabId === 'leaderboard') fetchRealLootLockerLeaderboard();
+      if (tabId === 'quests') renderQuests();
+    }
+
+    /* ==========================================================================
+       14. INPUT HANDLERS
+       ========================================================================== */
+    document.addEventListener('keydown', (e) => {
+      if (!isPlaying || isGameOver) return;
+      if (e.key === 'ArrowLeft') moveLeft();
+      if (e.key === 'ArrowRight') moveRight();
+      if (e.key === 'ArrowUp') rotatePiece(currentPiece);
+      if (e.key === 'ArrowDown') softDrop();
+      if (e.key === ' ') { e.preventDefault(); hardDrop(); }
+      if (e.key === 'c' || e.key === 'C' || e.key === 'Shift') holdCurrentPiece();
+    });
+
+    function handleTouchAction(action) {
+      if (!isPlaying || isGameOver) return;
+      if (action === 'left') moveLeft();
+      if (action === 'right') moveRight();
+      if (action === 'rotate') rotatePiece(currentPiece);
+      if (action === 'softDrop') softDrop();
+      if (action === 'hardDrop') hardDrop();
+      if (action === 'hold') holdCurrentPiece();
+    }
+
+    /* ==========================================================================
+       15. INIT ON LOAD
+       ========================================================================== */
+    window.onload = function() {
+      loadPlayerState();
+      applyBackgroundTheme();
+      updateGameUI();
+      drawWheel();
+      initLootLockerSession();
+      requestAnimationFrame(gameLoop);
+    };
+  </script>
+</body>
+</html>
